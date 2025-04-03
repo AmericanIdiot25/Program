@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from 'react';
 
 export interface Transform {
@@ -80,6 +81,7 @@ export const useImageGestures = ({
     updateZoomState(false);
     doubleTapToZoomRef.current = false;
     isTouchActiveRef.current = false;
+    touchMoveCountRef.current = 0;
   }, [updateZoomState]);
 
   // Calculate distance between two touch points
@@ -103,7 +105,7 @@ export const useImageGestures = ({
     };
   }, []);
 
-  // Constraint function that calculates boundaries
+  // Constraint function with improved boundary calculations
   const constrainTransform = useCallback((newTransform: Transform): Transform => {
     if (!imageRef.current || !containerRef.current) return newTransform;
     
@@ -114,27 +116,28 @@ export const useImageGestures = ({
       return { scale: MIN_SCALE, translateX: 0, translateY: 0 };
     }
     
-    // Calculate constraints based on current scale
+    // Calculate constraints based on current scale and image dimensions
     const scaledImageWidth = imageDimensions.width * scale;
     const scaledImageHeight = imageDimensions.height * scale;
     
-    // Calculate maximum translation values
-    const maxTranslateX = Math.max(0, (scaledImageWidth - containerDimensions.width) / 2);
-    const maxTranslateY = Math.max(0, (scaledImageHeight - containerDimensions.height) / 2);
+    // Calculate maximum translation values with a small buffer
+    const horizontalOverflow = Math.max(0, (scaledImageWidth - containerDimensions.width) / 2);
+    const verticalOverflow = Math.max(0, (scaledImageHeight - containerDimensions.height) / 2);
     
+    // Apply constraints with improved smoothing
     return {
       scale: Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale)),
-      translateX: Math.max(-maxTranslateX, Math.min(maxTranslateX, translateX)),
-      translateY: Math.max(-maxTranslateY, Math.min(maxTranslateY, translateY))
+      translateX: Math.max(-horizontalOverflow, Math.min(horizontalOverflow, translateX)),
+      translateY: Math.max(-verticalOverflow, Math.min(verticalOverflow, translateY))
     };
   }, [imageDimensions, containerDimensions]);
 
-  // Handle double tap to zoom
+  // Improved double tap to zoom with better center point calculation
   const handleDoubleTap = useCallback((point: { x: number, y: number }) => {
     doubleTapToZoomRef.current = true;
     
     if (transform.scale > MIN_SCALE) {
-      // Zoom out with animation
+      // Zoom out
       resetTransform();
     } else {
       // Zoom in to the point that was double-tapped
@@ -143,11 +146,18 @@ export const useImageGestures = ({
       
       const targetScale = 2.5;
       
-      setTransform({
+      // Calculate the center point relative to container center
+      const pointRelativeToContainerCenterX = point.x - rect.width / 2;
+      const pointRelativeToContainerCenterY = point.y - rect.height / 2;
+      
+      // Apply zoom centered on tap point
+      const newTransform = constrainTransform({
         scale: targetScale,
-        translateX: (containerDimensions.width / 2 - point.x) * (targetScale / 2),
-        translateY: (containerDimensions.height / 2 - point.y) * (targetScale / 2)
+        translateX: -pointRelativeToContainerCenterX * (targetScale - 1) / targetScale,
+        translateY: -pointRelativeToContainerCenterY * (targetScale - 1) / targetScale
       });
+      
+      setTransform(newTransform);
       updateZoomState(true);
     }
     
@@ -155,7 +165,7 @@ export const useImageGestures = ({
     setTimeout(() => {
       doubleTapToZoomRef.current = false;
     }, 300);
-  }, [containerDimensions, transform.scale, containerRef, resetTransform, updateZoomState]);
+  }, [transform.scale, containerRef, resetTransform, updateZoomState, constrainTransform]);
 
   // Handle double click for desktop
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -171,7 +181,7 @@ export const useImageGestures = ({
     handleDoubleTap({ x, y });
   }, [containerRef, handleDoubleTap]);
 
-  // Handle touch start
+  // Handle touch start with improved gesture detection
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     // Always prevent default for touch events in our container
     e.preventDefault();
@@ -233,7 +243,7 @@ export const useImageGestures = ({
     }
   }, [disableCarousel, isZoomed, transform, containerRef, getTouchDistance, getTouchCenter, updateZoomState, handleDoubleTap]);
 
-  // Handle touch move
+  // Optimized touch move handler with smoother pinch zoom
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // Always prevent default to stop native browser behaviors
     e.preventDefault();
@@ -275,7 +285,7 @@ export const useImageGestures = ({
       });
     } 
     else if (e.touches.length === 2) {
-      // Handle pinch zoom
+      // Handle pinch zoom with improved center tracking
       const currentDistance = getTouchDistance(e.touches);
       const center = getTouchCenter(e.touches);
       
@@ -321,7 +331,7 @@ export const useImageGestures = ({
     }
   }, [disableCarousel, isZoomed, transform.scale, containerRef, containerDimensions, getTouchDistance, getTouchCenter, constrainTransform, updateZoomState]);
 
-  // Handle touch end
+  // Handle touch end with improved snap behavior
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
     

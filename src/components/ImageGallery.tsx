@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
   Carousel,
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface ImageGalleryProps {
   totalImages: number;
@@ -38,20 +39,21 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const handleZoomChange = (zoomed: boolean) => {
     setIsZoomed(zoomed);
     
+    if (!carouselApi) return;
+    
     // Explicitly disable or enable carousel scrolling based on zoom
-    if (carouselApi) {
-      if (zoomed) {
-        // When zoomed, completely disable the carousel
-        carouselApi.internalEngine().scrollTo = () => {}; // Override scrollTo
-        carouselApi.internalEngine().scrollNext = () => {}; // Disable scroll next
-        carouselApi.internalEngine().scrollPrev = () => {}; // Disable scroll prev
-      } else {
-        // Re-enable carousel when not zoomed
-        carouselApi.reInit();
-      }
+    if (zoomed) {
+      // When zoomed, completely disable the carousel
+      carouselApi.internalEngine().scrollTo = () => {}; // Override scrollTo
+      carouselApi.internalEngine().scrollNext = () => {}; // Disable scroll next
+      carouselApi.internalEngine().scrollPrev = () => {}; // Disable scroll prev
+    } else {
+      // Re-enable carousel when not zoomed
+      carouselApi.reInit();
     }
   };
 
+  // Load images with improved path handling
   useEffect(() => {
     const paths = Array.from({ length: totalImages }, (_, i) => {
       const index = i + 1;
@@ -68,26 +70,26 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
 
     const allPaths = paths.flat();
     
-    console.log('Trying image paths:', allPaths.slice(0, 10), '...');
-    
-    Promise.all(
+    // Use Promise.allSettled instead of Promise.all for more robust error handling
+    Promise.allSettled(
       allPaths.map(path => 
         new Promise<string>((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(path);
           img.onerror = () => reject();
           img.src = path;
-        }).catch(() => null)
+        })
       )
-    ).then(validPaths => {
-      const workingPaths = validPaths.filter(Boolean) as string[];
-      console.log('Working image paths found:', workingPaths.length > 0 ? workingPaths.slice(0, 5) : 'None');
+    ).then(results => {
+      const validPaths = results
+        .filter(result => result.status === 'fulfilled')
+        .map(result => (result as PromiseFulfilledResult<string>).value);
       
-      if (workingPaths.length > 0) {
+      if (validPaths.length > 0) {
         const uniqueImages: string[] = [];
         
         for (let i = 1; i <= totalImages; i++) {
-          const matchingPaths = workingPaths.filter(path => 
+          const matchingPaths = validPaths.filter(path => 
             path.includes(`page${i}.png`) || path.endsWith(`${i}.png`)
           );
           
@@ -96,7 +98,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           }
         }
         
-        console.log('Final unique image paths:', uniqueImages.slice(0, 5), '...');
         setLoadedImages(uniqueImages);
         setLoadError(false);
       } else {
@@ -104,7 +105,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         const fallbackImages = Array.from({ length: totalImages }, (_, i) => 
           `/lovable-uploads/page${i + 1}.png`
         );
-        console.log('Using fallback image paths:', fallbackImages.slice(0, 5), '...');
         setLoadedImages(fallbackImages);
         setLoadError(false);
       }
@@ -141,47 +141,49 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     <div 
       className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden touch-none' : ''}`}
     >
-      <Carousel 
-        className={`w-full h-full ${isZoomed ? 'pointer-events-none' : ''}`}
-        opts={{
-          align: "center",
-          loop: true,
-          skipSnaps: false,
-          containScroll: "keepSnaps",
-          dragFree: false,
-        }}
-        setApi={setCarouselApi}
-      >
-        <CarouselContent className="h-full">
-          {loadedImages.map((src, index) => (
-            <CarouselItem 
-              key={index} 
-              className={`basis-full h-full ${isZoomed ? 'overflow-hidden' : ''}`}
-            >
-              <PhotoItem 
-                src={src} 
-                onZoomChange={handleZoomChange}
-                disableCarousel={isZoomed}
-              />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      <ErrorBoundary fallback={<div className="w-full h-full flex items-center justify-center text-white">Something went wrong with the image viewer.</div>}>
+        <Carousel 
+          className={`w-full h-full ${isZoomed ? 'pointer-events-none' : ''}`}
+          opts={{
+            align: "center",
+            loop: true,
+            skipSnaps: false,
+            containScroll: "keepSnaps",
+            dragFree: false,
+          }}
+          setApi={setCarouselApi}
+        >
+          <CarouselContent className="h-full">
+            {loadedImages.map((src, index) => (
+              <CarouselItem 
+                key={index} 
+                className={`basis-full h-full ${isZoomed ? 'overflow-hidden' : ''}`}
+              >
+                <PhotoItem 
+                  src={src} 
+                  onZoomChange={handleZoomChange}
+                  disableCarousel={isZoomed}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
 
-      {!isZoomed && (
-        <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
-          {loadedImages.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => handleIndicatorClick(index)}
-              className={`w-2 h-2 rounded-full ${
-                index === currentIndex ? 'bg-white' : 'bg-white/40'
-              } transition-colors duration-200`}
-              aria-label={`Go to image ${index + 1}`}
-            />
-          ))}
-        </div>
-      )}
+        {!isZoomed && (
+          <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
+            {loadedImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => handleIndicatorClick(index)}
+                className={`w-2 h-2 rounded-full ${
+                  index === currentIndex ? 'bg-white' : 'bg-white/40'
+                } transition-colors duration-200`}
+                aria-label={`Go to image ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </ErrorBoundary>
     </div>
   );
 };

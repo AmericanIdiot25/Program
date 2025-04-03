@@ -57,16 +57,14 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
       }
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [src, updateDimensions]);
+  }, [updateDimensions]);
   
-  // Separate effect to reset transform when src changes to avoid loops
+  // Use a separate effect to reset transform when src changes to avoid dependency loops
   useEffect(() => {
-    if (resetTransform) {
-      resetTransform();
-    }
+    resetTransform();
   }, [src, resetTransform]);
 
-  // Show zoom indicator temporarily when zoomed
+  // Show zoom indicator temporarily when zoomed state changes
   useEffect(() => {
     if (isZoomed) {
       setShowZoomIndicator(true);
@@ -74,6 +72,8 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
         setShowZoomIndicator(false);
       }, 1500);
       return () => clearTimeout(timer);
+    } else {
+      setShowZoomIndicator(false);
     }
   }, [isZoomed]);
 
@@ -97,7 +97,7 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
             transition: isZoomed ? 'none' : 'transform 0.3s ease-out',
             userSelect: 'none',
             touchAction: 'none',
-            WebkitUserSelect: 'none'
+            pointerEvents: 'none'
           }}
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
@@ -106,7 +106,7 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
       
       {/* Zoom indicator */}
       {showZoomIndicator && (
-        <div className="absolute bottom-4 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-50 py-1 transition-opacity duration-300">
+        <div className="absolute bottom-4 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-50 py-1 px-2 mx-auto max-w-[200px] rounded-full transition-opacity duration-300">
           {transform.scale > 1 ? 'Pinch or double-tap to zoom out' : 'Pinch or double-tap to zoom in'}
         </div>
       )}
