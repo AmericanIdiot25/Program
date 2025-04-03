@@ -5,6 +5,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselPrevious,
+  CarouselNext
 } from "@/components/ui/carousel";
 
 interface ImageGalleryProps {
@@ -29,9 +31,9 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         className="w-full h-full" 
         opts={{
           align: "start",
-          loop: false,
+          loop: true,
           skipSnaps: false,
-          dragFree: false
+          dragFree: true
         }}
         setApi={(api) => {
           if (api) {
@@ -49,7 +51,11 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           ))}
         </CarouselContent>
         
-        {/* Navigation controls */}
+        {/* Add previous and next buttons for navigation */}
+        <CarouselPrevious className="absolute left-4 z-10 bg-black/50 text-white border-none hover:bg-black/70" />
+        <CarouselNext className="absolute right-4 z-10 bg-black/50 text-white border-none hover:bg-black/70" />
+        
+        {/* Navigation indicator dots */}
         <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
           {images.map((_, index) => (
             <button
