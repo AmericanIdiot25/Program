@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -17,6 +18,22 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [carouselApi, setCarouselApi] = useState<any>(null);
+  
+  // Disable carousel scrolling when zoomed
+  useEffect(() => {
+    if (carouselApi && isZoomed) {
+      // When zoomed, completely disable the carousel's ability to handle events
+      carouselApi.off("pointerDown");
+      carouselApi.off("pointerUp");
+      carouselApi.off("pointerMove");
+    } else if (carouselApi && !isZoomed) {
+      // Re-enable events when not zoomed
+      carouselApi.on("pointerDown");
+      carouselApi.on("pointerUp");
+      carouselApi.on("pointerMove");
+    }
+  }, [carouselApi, isZoomed]);
   
   useEffect(() => {
     const paths = Array.from({ length: totalImages }, (_, i) => {
@@ -80,8 +97,9 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   }, [totalImages, imagePrefix]);
 
   const handleIndicatorClick = (index: number) => {
-    if (!isZoomed) {
+    if (!isZoomed && carouselApi) {
       setCurrentIndex(index);
+      carouselApi.scrollTo(index);
     }
   };
 
@@ -121,6 +139,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         }}
         setApi={(api) => {
           if (api) {
+            setCarouselApi(api);
             api.on("select", () => {
               if (!isZoomed) {
                 setCurrentIndex(api.selectedScrollSnap());
