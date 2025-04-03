@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -12,6 +11,8 @@ interface ImageGalleryProps {
   imagePrefix?: string;
 }
 
+type AlignType = "start" | "center" | "end";
+
 const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
@@ -21,7 +22,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [carouselOptions, setCarouselOptions] = useState({
-    align: "center",
+    align: "center" as AlignType,
     loop: true,
     containScroll: "trimSnaps",
     dragFree: false,
@@ -30,23 +31,19 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     active: true
   });
   
-  // More aggressive prevention of carousel scrolling when zoomed
   useEffect(() => {
     if (!carouselApi) return;
     
     if (isZoomed) {
-      // When zoomed, completely disable the carousel's ability to handle events
       carouselApi.off("pointerDown");
       carouselApi.off("pointerUp");
       carouselApi.off("pointerMove");
       
-      // Update options state instead of modifying carouselApi directly
       setCarouselOptions(prev => ({
         ...prev,
         active: false
       }));
       
-      // Add an invisible overlay to catch all touch events when zoomed
       if (containerRef.current) {
         const overlay = document.createElement('div');
         overlay.id = 'zoom-overlay';
@@ -57,7 +54,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         overlay.style.bottom = '0';
         overlay.style.zIndex = '5';
         
-        // Prevent touch events from propagating to the carousel
         overlay.addEventListener('touchstart', e => e.stopPropagation(), { passive: false });
         overlay.addEventListener('touchmove', e => e.stopPropagation(), { passive: false });
         overlay.addEventListener('touchend', e => e.stopPropagation(), { passive: false });
@@ -65,18 +61,15 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         containerRef.current.appendChild(overlay);
       }
     } else {
-      // Re-enable events when not zoomed
       carouselApi.on("pointerDown");
       carouselApi.on("pointerUp");
       carouselApi.on("pointerMove");
       
-      // Reset options state
       setCarouselOptions(prev => ({
         ...prev,
         active: true
       }));
       
-      // Remove overlay if it exists
       const overlay = document.getElementById('zoom-overlay');
       if (overlay && containerRef.current) {
         containerRef.current.removeChild(overlay);
