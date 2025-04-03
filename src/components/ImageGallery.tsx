@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
-  CarouselNext
 } from "@/components/ui/carousel";
 
 interface ImageGalleryProps {
@@ -16,16 +14,20 @@ interface ImageGalleryProps {
 const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Create array of image paths
-  const images = Array.from({ length: totalImages }, (_, i) => {
-    // If using the uploaded images, they'll be in the lovable-uploads folder
-    // Otherwise, use the original naming convention
-    if (i < 24) {
-      return `${imagePrefix}${i + 1}.png`;
-    } else {
-      return `${imagePrefix}${i + 1}.png`;
-    }
-  });
+  // Create array of image paths from the lovable-uploads folder
+  const images = [
+    // Images already loaded in the first batch
+    "lovable-uploads/5f1ccfee-d73c-4050-a65a-b0edcd6cb382.png",
+    "lovable-uploads/6a3c1f0a-2110-42e7-97f5-902b4a73813c.png",
+    "lovable-uploads/b3c62701-398a-4a7a-a75f-72bb460b935d.png", 
+    "lovable-uploads/4610f6b7-5215-45f9-8e97-045023d37703.png",
+    "lovable-uploads/060d4703-3899-4bd8-98c7-2e740d1c4272.png",
+    "lovable-uploads/f9596ee5-5d57-4343-9e04-c7969c6359d7.png",
+    // Other images to make up the total (we'll use placeholders if needed)
+    ...Array(Math.max(0, totalImages - 6)).fill(null).map((_, i) => 
+      `${imagePrefix}${i + 7}.png`
+    )
+  ];
   
   // Handle manual image change via click on indicator dots
   const handleIndicatorClick = (index: number) => {
