@@ -1,11 +1,5 @@
-
-import React, { useState, useEffect, Suspense } from 'react';
-import PhotoItem from './PhotoItem';
-import { 
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
+import React, { useState, useEffect } from 'react';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface ImageGalleryProps {
@@ -14,46 +8,10 @@ interface ImageGalleryProps {
 }
 
 const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
-  const [carouselApi, setCarouselApi] = useState<any>(null);
 
-  useEffect(() => {
-    if (!carouselApi) return;
-    
-    const onSelect = () => {
-      setCurrentIndex(carouselApi.selectedScrollSnap());
-    };
-    
-    carouselApi.on("select", onSelect);
-    onSelect();
-    
-    return () => {
-      carouselApi.off("select", onSelect);
-    };
-  }, [carouselApi]);
-  
-  const handleZoomChange = (zoomed: boolean) => {
-    setIsZoomed(zoomed);
-    
-    if (!carouselApi) return;
-    
-    // Explicitly disable or enable carousel scrolling based on zoom
-    if (zoomed) {
-      // When zoomed, completely disable the carousel
-      carouselApi.internalEngine().scrollTo = () => {}; // Override scrollTo
-      carouselApi.internalEngine().scrollNext = () => {}; // Disable scroll next
-      carouselApi.internalEngine().scrollPrev = () => {}; // Disable scroll prev
-    } else {
-      // Re-enable carousel when not zoomed
-      carouselApi.reInit();
-    }
-  };
-
-  // Load images with improved path handling
   useEffect(() => {
     const paths = Array.from({ length: totalImages }, (_, i) => {
       const index = i + 1;
@@ -70,7 +28,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
 
     const allPaths = paths.flat();
     
-    // Use Promise.allSettled instead of Promise.all for more robust error handling
     Promise.allSettled(
       allPaths.map(path => 
         new Promise<string>((resolve, reject) => {
@@ -113,13 +70,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     });
   }, [totalImages, imagePrefix]);
 
-  const handleIndicatorClick = (index: number) => {
-    if (!isZoomed && carouselApi) {
-      setCurrentIndex(index);
-      carouselApi.scrollTo(index);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-black text-white">
@@ -138,51 +88,21 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   }
 
   return (
-    <div 
-      className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden touch-none' : ''}`}
-    >
+    <div className="w-full h-full bg-black">
       <ErrorBoundary fallback={<div className="w-full h-full flex items-center justify-center text-white">Something went wrong with the image viewer.</div>}>
-        <Carousel 
-          className={`w-full h-full ${isZoomed ? 'pointer-events-none' : ''}`}
-          opts={{
-            align: "center",
-            loop: true,
-            skipSnaps: false,
-            containScroll: "keepSnaps",
-            dragFree: false,
-          }}
-          setApi={setCarouselApi}
-        >
-          <CarouselContent className="h-full">
+        <ScrollArea className="h-full w-full">
+          <div className="flex flex-col items-center pb-20">
             {loadedImages.map((src, index) => (
-              <CarouselItem 
-                key={index} 
-                className={`basis-full h-full ${isZoomed ? 'overflow-hidden' : ''}`}
-              >
-                <PhotoItem 
-                  src={src} 
-                  onZoomChange={handleZoomChange}
-                  disableCarousel={isZoomed}
+              <div key={index} className="w-full p-2 max-w-3xl mx-auto">
+                <img 
+                  src={src}
+                  alt={`Page ${index + 1}`}
+                  className="w-full object-contain rounded-md"
                 />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-
-        {!isZoomed && (
-          <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
-            {loadedImages.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => handleIndicatorClick(index)}
-                className={`w-2 h-2 rounded-full ${
-                  index === currentIndex ? 'bg-white' : 'bg-white/40'
-                } transition-colors duration-200`}
-                aria-label={`Go to image ${index + 1}`}
-              />
+              </div>
             ))}
           </div>
-        )}
+        </ScrollArea>
       </ErrorBoundary>
     </div>
   );
