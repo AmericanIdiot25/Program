@@ -20,6 +20,15 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [isZoomed, setIsZoomed] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [carouselOptions, setCarouselOptions] = useState({
+    align: "center",
+    loop: true,
+    containScroll: "trimSnaps",
+    dragFree: false,
+    skipSnaps: false,
+    inViewThreshold: 1,
+    active: true
+  });
   
   // More aggressive prevention of carousel scrolling when zoomed
   useEffect(() => {
@@ -31,9 +40,11 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       carouselApi.off("pointerUp");
       carouselApi.off("pointerMove");
       
-      // Additional prevention: set a flag to explicitly prevent scroll
-      carouselApi.options.draggable = false;
-      carouselApi.options.active = false;
+      // Update options state instead of modifying carouselApi directly
+      setCarouselOptions(prev => ({
+        ...prev,
+        active: false
+      }));
       
       // Add an invisible overlay to catch all touch events when zoomed
       if (containerRef.current) {
@@ -59,9 +70,11 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       carouselApi.on("pointerUp");
       carouselApi.on("pointerMove");
       
-      // Reset options
-      carouselApi.options.draggable = true;
-      carouselApi.options.active = true;
+      // Reset options state
+      setCarouselOptions(prev => ({
+        ...prev,
+        active: true
+      }));
       
       // Remove overlay if it exists
       const overlay = document.getElementById('zoom-overlay');
@@ -164,15 +177,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     <div className="w-full h-full bg-black flex flex-col relative" ref={containerRef}>
       <Carousel 
         className="w-full h-full" 
-        opts={{
-          align: "center",
-          loop: true,
-          containScroll: "trimSnaps",
-          dragFree: false,
-          skipSnaps: false,
-          inViewThreshold: 1,
-          active: !isZoomed
-        }}
+        opts={carouselOptions}
         setApi={(api) => {
           if (api) {
             setCarouselApi(api);
