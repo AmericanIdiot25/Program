@@ -96,8 +96,8 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
             transform: `scale(${transform.scale}) translate(${transform.translateX / transform.scale}px, ${transform.translateY / transform.scale}px)`,
             transition: isZoomed ? 'none' : 'transform 0.3s ease-out',
             userSelect: 'none',
-            WebkitUserDrag: 'none',
-            touchAction: 'none'
+            touchAction: 'none',
+            WebkitUserSelect: 'none'
           }}
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
