@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -17,35 +16,26 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
   
   useEffect(() => {
-    // Create array of image paths with multiple fallback approaches for Main branch/ROOT deployment
     const paths = Array.from({ length: totalImages }, (_, i) => {
       const index = i + 1;
       
-      // Try various path formats that might work in different environments and deployment setups
       return [
-        // Direct path to lovable-uploads - most likely to work in Main/ROOT deployment
         `/lovable-uploads/page${index}.png`,
-        // GitHub Pages with or without repo name as base path
         `${window.location.pathname}lovable-uploads/page${index}.png`,
-        // With BASE_URL from Vite (if available)
         `${import.meta.env.BASE_URL || '/'}lovable-uploads/page${index}.png`,
-        // Absolute path from root
         `/lovable-uploads/page${index}.png`,
-        // No leading slash
         `lovable-uploads/page${index}.png`,
-        // Just the filename as a last resort
         `page${index}.png`
       ];
     });
 
-    // Flatten the array of path arrays
     const allPaths = paths.flat();
     
     console.log('Trying image paths:', allPaths.slice(0, 10), '...');
     
-    // Attempt to preload images to check which paths work
     Promise.all(
       allPaths.map(path => 
         new Promise<string>((resolve, reject) => {
@@ -56,15 +46,12 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         }).catch(() => null)
       )
     ).then(validPaths => {
-      // Filter out null values (failed loads)
       const workingPaths = validPaths.filter(Boolean) as string[];
       console.log('Working image paths found:', workingPaths.length > 0 ? workingPaths.slice(0, 5) : 'None');
       
       if (workingPaths.length > 0) {
-        // Group the working paths by their image index
         const uniqueImages: string[] = [];
         
-        // For each image index, take the first working path
         for (let i = 1; i <= totalImages; i++) {
           const matchingPaths = workingPaths.filter(path => 
             path.includes(`page${i}.png`) || path.endsWith(`${i}.png`)
@@ -80,7 +67,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         setLoadError(false);
       } else {
         console.error('No working image paths found');
-        // Try a direct hardcoded approach as a last resort
         const fallbackImages = Array.from({ length: totalImages }, (_, i) => 
           `/lovable-uploads/page${i + 1}.png`
         );
@@ -93,9 +79,10 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     });
   }, [totalImages, imagePrefix]);
 
-  // Handle manual image change via click on indicator dots
   const handleIndicatorClick = (index: number) => {
-    setCurrentIndex(index);
+    if (!isZoomed) {
+      setCurrentIndex(index);
+    }
   };
 
   if (isLoading) {
@@ -130,7 +117,9 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         setApi={(api) => {
           if (api) {
             api.on("select", () => {
-              setCurrentIndex(api.selectedScrollSnap());
+              if (!isZoomed) {
+                setCurrentIndex(api.selectedScrollSnap());
+              }
             });
           }
         }}
@@ -138,12 +127,13 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         <CarouselContent className="h-full">
           {loadedImages.map((src, index) => (
             <CarouselItem key={index} className="basis-full h-full">
-              <PhotoItem src={src} />
+              <PhotoItem 
+                src={src} 
+              />
             </CarouselItem>
           ))}
         </CarouselContent>
         
-        {/* Navigation indicator dots */}
         <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
           {loadedImages.map((_, index) => (
             <button

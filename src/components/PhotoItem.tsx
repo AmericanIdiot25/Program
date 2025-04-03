@@ -20,11 +20,11 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
   const touchStartRef = useRef({ x: 0, y: 0 });
   const initialTouchDistanceRef = useRef(0);
   const initialTransformRef = useRef<Transform>({ scale: 1, translateX: 0, translateY: 0 });
+  const lastTapTimeRef = useRef(0);
   
   // Reset transform when the component unmounts or the image changes
   useEffect(() => {
     resetTransform();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
   const resetTransform = () => {
@@ -54,34 +54,40 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
   };
 
   // Handle double tap to zoom in and out
-  const handleDoubleTap = (e: React.TouchEvent) => {
+  const handleTap = (e: React.TouchEvent) => {
     e.preventDefault();
     
-    if (transform.scale > 1) {
-      // If already zoomed in, reset
-      resetTransform();
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTapTimeRef.current;
+    
+    // Detect double tap (time between taps less than 300ms)
+    if (tapLength < 300 && tapLength > 0) {
+      if (transform.scale > 1) {
+        // If already zoomed in, reset
+        resetTransform();
+      } else {
+        // Zoom in to the point that was double-tapped
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        
+        const x = e.touches[0].clientX - rect.left;
+        const y = e.touches[0].clientY - rect.top;
+        
+        const targetScale = 2.5;
+        
+        setTransform({
+          scale: targetScale,
+          translateX: (rect.width / 2 - x) * targetScale,
+          translateY: (rect.height / 2 - y) * targetScale
+        });
+        setIsZoomed(true);
+      }
+      
+      // Reset tap time reference
+      lastTapTimeRef.current = 0;
     } else {
-      // Zoom in to the point that was double-tapped
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      
-      const x = e.touches[0].clientX - rect.left;
-      const y = e.touches[0].clientY - rect.top;
-      
-      // Calculate the point to zoom to (in the image's coordinate space)
-      const containerWidth = rect.width;
-      const containerHeight = rect.height;
-      
-      const targetScale = 2.5;
-      const translateX = (containerWidth / 2 - x) * targetScale;
-      const translateY = (containerHeight / 2 - y) * targetScale;
-      
-      setTransform({
-        scale: targetScale,
-        translateX,
-        translateY
-      });
-      setIsZoomed(true);
+      // This is a single tap
+      lastTapTimeRef.current = currentTime;
     }
   };
 
@@ -94,8 +100,14 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
         y: e.touches[0].clientY 
       };
       initialTransformRef.current = { ...transform };
+      
+      // Handle tap/double tap
+      handleTap(e);
     } 
     else if (e.touches.length === 2) {
+      // Prevent default behavior for pinch gestures
+      e.preventDefault();
+      
       // Pinch gesture - prepare for zooming
       initialTouchDistanceRef.current = getTouchDistance(e.touches);
       initialTransformRef.current = { ...transform };
@@ -109,7 +121,8 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
       return;
     }
     
-    e.preventDefault(); // Prevent scrolling when zoomed
+    // Stop carousel scrolling when zoomed
+    e.preventDefault(); 
     
     if (e.touches.length === 1 && transform.scale > 1) {
       // Handle panning when zoomed in
@@ -130,7 +143,7 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
       if (initialTouchDistanceRef.current > 0) {
         // Calculate new scale based on finger distance
         const scaleFactor = currentDistance / initialTouchDistanceRef.current;
-        const newScale = Math.max(0.5, Math.min(5, initialTransformRef.current.scale * scaleFactor));
+        const newScale = Math.max(1, Math.min(5, initialTransformRef.current.scale * scaleFactor));
         
         // Get container dimensions
         const rect = containerRef.current?.getBoundingClientRect();
@@ -166,10 +179,10 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
     
     const { scale, translateX, translateY } = transform;
     const container = containerRef.current.getBoundingClientRect();
-    const image = imageRef.current.getBoundingClientRect();
     
-    const maxTranslateX = (scale - 1) * (container.width / 2);
-    const maxTranslateY = (scale - 1) * (container.height / 2);
+    // Calculate constraints based on scale
+    const maxTranslateX = Math.max(0, (scale - 1) * (container.width / 2));
+    const maxTranslateY = Math.max(0, (scale - 1) * (container.height / 2));
     
     return {
       scale,
@@ -184,28 +197,18 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
   return (
     <div 
       ref={containerRef}
-      className="photo-container bg-gallery-background"
+      className="photo-container w-full h-full bg-black"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      onDoubleClick={() => resetTransform()}
     >
-      <div 
-        className="w-full h-full flex items-center justify-center"
-        onTouchStart={(e) => {
-          if (e.touches.length === 2) e.preventDefault();
-        }}
-      >
+      <div className="w-full h-full flex items-center justify-center">
         <img
           ref={imageRef}
           src={src}
           alt="Gallery item"
-          className="photo-item max-h-full max-w-full object-contain"
+          className="photo-item max-h-full max-w-full object-contain transition-transform"
           style={{ transform: transformStyle }}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            handleDoubleTap(e as unknown as React.TouchEvent);
-          }}
           draggable={false}
         />
       </div>
