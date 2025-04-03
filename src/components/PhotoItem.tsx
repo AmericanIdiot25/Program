@@ -62,16 +62,34 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
     if (resetTransform) {
       resetTransform();
     }
-  }, [src]); // Only reset when src changes, not when resetTransform changes
+  }, [src, resetTransform]); // Include resetTransform as it's now stable due to useCallback
 
   return (
     <div 
       ref={containerRef}
-      className="photo-container w-full h-full bg-black"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ pointerEvents: 'auto', overflow: 'hidden' }}
+      className="photo-container relative w-full h-full bg-black overflow-hidden"
+      onTouchStart={(e) => {
+        // Always prevent default for touch events in our container
+        e.preventDefault();
+        if (isZoomed) {
+          e.stopPropagation(); // Completely stop event bubbling when zoomed
+        }
+        handleTouchStart(e);
+      }}
+      onTouchMove={(e) => {
+        e.preventDefault();
+        if (isZoomed) {
+          e.stopPropagation(); // Completely stop event bubbling when zoomed
+        }
+        handleTouchMove(e);
+      }}
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        if (isZoomed) {
+          e.stopPropagation(); // Completely stop event bubbling when zoomed
+        }
+        handleTouchEnd(e);
+      }}
     >
       <div className="w-full h-full flex items-center justify-center">
         <img
@@ -83,9 +101,11 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
             transform: `scale(${transform.scale}) translate(${transform.translateX / transform.scale}px, ${transform.translateY / transform.scale}px)`,
             transition: isZoomed ? 'none' : 'transform 0.3s ease-out',
             userSelect: 'none',
-            WebkitUserDrag: 'none'
+            WebkitUserDrag: 'none',
+            touchAction: 'none' // Disable browser handling of all touch gestures
           }}
           draggable={false}
+          onDragStart={(e) => e.preventDefault()} // Extra precaution against dragging
         />
       </div>
     </div>

@@ -37,6 +37,19 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   
   const handleZoomChange = (zoomed: boolean) => {
     setIsZoomed(zoomed);
+    
+    // Explicitly disable or enable carousel scrolling based on zoom
+    if (carouselApi) {
+      if (zoomed) {
+        // When zoomed, completely disable the carousel
+        carouselApi.internalEngine().scrollTo = () => {}; // Override scrollTo
+        carouselApi.internalEngine().scrollNext = () => {}; // Disable scroll next
+        carouselApi.internalEngine().scrollPrev = () => {}; // Disable scroll prev
+      } else {
+        // Re-enable carousel when not zoomed
+        carouselApi.reInit();
+      }
+    }
   };
 
   useEffect(() => {
@@ -126,16 +139,16 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
 
   return (
     <div 
-      className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden' : ''}`}
+      className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden touch-none' : ''}`}
     >
       <Carousel 
-        className="w-full h-full"
+        className={`w-full h-full ${isZoomed ? 'pointer-events-none' : ''}`}
         opts={{
           align: "center",
           loop: true,
           skipSnaps: false,
           containScroll: "keepSnaps",
-          dragFree: false
+          dragFree: false,
         }}
         setApi={setCarouselApi}
       >
@@ -143,7 +156,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           {loadedImages.map((src, index) => (
             <CarouselItem 
               key={index} 
-              className="basis-full h-full"
+              className={`basis-full h-full ${isZoomed ? 'overflow-hidden' : ''}`}
             >
               <PhotoItem 
                 src={src} 
