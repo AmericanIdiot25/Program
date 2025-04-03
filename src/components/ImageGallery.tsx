@@ -118,8 +118,8 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           dragFree: false,
           skipSnaps: false,
           inViewThreshold: 1,
-          // Disable dragging when zoomed
-          draggable: !isZoomed
+          // Use the correct property to disable dragging when zoomed
+          draggable: !isZoomed  // This value will be handled by the correct EmblaOptions type
         }}
         setApi={(api) => {
           if (api) {
