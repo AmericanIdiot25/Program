@@ -5,6 +5,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { Maximize, Minimize } from 'lucide-react';
 
 interface ImageGalleryProps {
   totalImages: number;
@@ -20,6 +21,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -34,21 +36,85 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   });
   
   useEffect(() => {
-    // Only update carousel options when the zoom state changes
+    const handleFullscreenChange = () => {
+      setIsFullscreen(
+        Boolean(document.fullscreenElement || 
+        (document as any).webkitFullscreenElement || 
+        (document as any).mozFullScreenElement)
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        exitFullscreen();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
+  
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  };
+  
+  const enterFullscreen = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    if (container.requestFullscreen) {
+      container.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else if ((container as any).webkitRequestFullscreen) {
+      (container as any).webkitRequestFullscreen();
+    } else if ((container as any).mozRequestFullScreen) {
+      (container as any).mozRequestFullScreen();
+    }
+  };
+  
+  const exitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch(err => {
+        console.error(`Error attempting to exit fullscreen: ${err.message}`);
+      });
+    } else if ((document as any).webkitExitFullscreen) {
+      (document as any).webkitExitFullscreen();
+    } else if ((document as any).mozCancelFullScreen) {
+      (document as any).mozCancelFullScreen();
+    }
+  };
+  
+  useEffect(() => {
     if (!carouselApi) return;
     
     if (isZoomed) {
-      // When zoomed in, disable carousel interactions
       console.log('Disabling carousel (zoomed in)');
       
-      // Update carousel options to disable carousel
       setCarouselOptions(prev => ({
         ...prev,
         active: false,
         draggable: false
       }));
       
-      // Disable event handlers to prevent accidental scrolling
       carouselApi.off("select");
       carouselApi.off("scroll");
       carouselApi.off("settle");
@@ -56,7 +122,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       carouselApi.off("pointerUp");
       carouselApi.off("pointerMove");
       
-      // Add the overlay to block events from reaching the carousel
       if (containerRef.current) {
         const existingOverlay = document.getElementById('zoom-overlay');
         if (!existingOverlay) {
@@ -87,17 +152,14 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         }
       }
     } else {
-      // When zoomed out, re-enable carousel interactions
       console.log('Enabling carousel (zoomed out)');
       
-      // Update carousel options to enable carousel
       setCarouselOptions(prev => ({
         ...prev,
         active: true,
         draggable: true
       }));
       
-      // Re-initialize the carousel API
       if (carouselApi && carouselApi.reInit) {
         try {
           carouselApi.reInit();
@@ -106,7 +168,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         }
       }
       
-      // Re-enable all event handlers
       if (carouselApi) {
         try {
           carouselApi.on("select", () => setCurrentIndex(carouselApi.selectedScrollSnap()));
@@ -120,7 +181,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         }
       }
       
-      // Remove the overlay
       const overlay = document.getElementById('zoom-overlay');
       if (overlay && containerRef.current && containerRef.current.contains(overlay)) {
         containerRef.current.removeChild(overlay);
@@ -223,6 +283,15 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden' : ''}`} 
       ref={containerRef}
     >
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 z-10"
+        style={{ backdropFilter: 'blur(8px)' }}
+        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      >
+        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+      </button>
+      
       <Carousel 
         className="w-full h-full" 
         opts={carouselOptions}
