@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useImageGestures } from '../hooks/useImageGestures';
 
 interface PhotoItemProps {
@@ -11,6 +11,7 @@ interface PhotoItemProps {
 const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false);
   
   const {
     transform,
@@ -19,7 +20,8 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
     resetTransform,
     handleTouchStart,
     handleTouchMove,
-    handleTouchEnd
+    handleTouchEnd,
+    handleDoubleClick
   } = useImageGestures({
     onZoomChange,
     disableCarousel,
@@ -62,34 +64,27 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
     if (resetTransform) {
       resetTransform();
     }
-  }, [src, resetTransform]); // Include resetTransform as it's now stable due to useCallback
+  }, [src, resetTransform]);
+
+  // Show zoom indicator temporarily when zoomed
+  useEffect(() => {
+    if (isZoomed) {
+      setShowZoomIndicator(true);
+      const timer = setTimeout(() => {
+        setShowZoomIndicator(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isZoomed]);
 
   return (
     <div 
       ref={containerRef}
       className="photo-container relative w-full h-full bg-black overflow-hidden"
-      onTouchStart={(e) => {
-        // Always prevent default for touch events in our container
-        e.preventDefault();
-        if (isZoomed) {
-          e.stopPropagation(); // Completely stop event bubbling when zoomed
-        }
-        handleTouchStart(e);
-      }}
-      onTouchMove={(e) => {
-        e.preventDefault();
-        if (isZoomed) {
-          e.stopPropagation(); // Completely stop event bubbling when zoomed
-        }
-        handleTouchMove(e);
-      }}
-      onTouchEnd={(e) => {
-        e.preventDefault();
-        if (isZoomed) {
-          e.stopPropagation(); // Completely stop event bubbling when zoomed
-        }
-        handleTouchEnd(e);
-      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onDoubleClick={handleDoubleClick}
     >
       <div className="w-full h-full flex items-center justify-center">
         <img
@@ -102,17 +97,17 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
             transition: isZoomed ? 'none' : 'transform 0.3s ease-out',
             userSelect: 'none',
             WebkitUserDrag: 'none',
-            touchAction: 'none' // Disable browser handling of all touch gestures
+            touchAction: 'none'
           }}
           draggable={false}
-          onDragStart={(e) => e.preventDefault()} // Extra precaution against dragging
+          onDragStart={(e) => e.preventDefault()}
         />
       </div>
       
-      {/* Add double tap instruction indicator */}
-      {isZoomed && (
-        <div className="absolute bottom-4 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-50 py-1">
-          Double tap to zoom out
+      {/* Zoom indicator */}
+      {showZoomIndicator && (
+        <div className="absolute bottom-4 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-50 py-1 transition-opacity duration-300">
+          {transform.scale > 1 ? 'Pinch or double-tap to zoom out' : 'Pinch or double-tap to zoom in'}
         </div>
       )}
     </div>
