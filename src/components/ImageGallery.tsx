@@ -15,8 +15,12 @@ interface ImageGalleryProps {
 const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
-  // Create array of image paths with correct paths
-  const images = Array.from({ length: totalImages }, (_, i) => `/${imagePrefix}${i + 1}.png`);
+  // Create array of image paths with base path consideration
+  const images = Array.from({ length: totalImages }, (_, i) => {
+    // Ensure path works in both development and production environments
+    const basePath = import.meta.env.BASE_URL || '/';
+    return `${basePath}${imagePrefix}${i + 1}.png`;
+  });
   
   // Handle manual image change via click on indicator dots
   const handleIndicatorClick = (index: number) => {
