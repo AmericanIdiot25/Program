@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 interface PhotoItemProps {
   src: string;
   onZoomChange?: (isZoomed: boolean) => void;
+  disableCarousel?: boolean;
 }
 
 interface Transform {
@@ -12,7 +13,7 @@ interface Transform {
   translateY: number;
 }
 
-const PhotoItem = ({ src, onZoomChange }: PhotoItemProps) => {
+const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [transform, setTransform] = useState<Transform>({ scale: 1, translateX: 0, translateY: 0 });
@@ -101,6 +102,11 @@ const PhotoItem = ({ src, onZoomChange }: PhotoItemProps) => {
 
   // Handle touch start
   const handleTouchStart = (e: React.TouchEvent) => {
+    // When carousel is disabled (image is zoomed), make sure all touch events are captured here
+    if (disableCarousel) {
+      e.stopPropagation();
+    }
+    
     // Store the current touch position
     if (e.touches.length === 1) {
       // Single touch - prepare for panning
@@ -138,6 +144,11 @@ const PhotoItem = ({ src, onZoomChange }: PhotoItemProps) => {
 
   // Handle touch move
   const handleTouchMove = (e: React.TouchEvent) => {
+    // Stop propagation when carousel should be disabled
+    if (disableCarousel) {
+      e.stopPropagation();
+    }
+    
     if (e.touches.length === 1 && transform.scale > 1) {
       // Handle panning when zoomed in
       e.preventDefault(); // Prevent scrolling
@@ -203,6 +214,11 @@ const PhotoItem = ({ src, onZoomChange }: PhotoItemProps) => {
 
   // Handle touch end
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Stop propagation when carousel should be disabled
+    if (disableCarousel) {
+      e.stopPropagation();
+    }
+    
     // Update initial state for next gesture
     initialTouchDistanceRef.current = 0;
     
@@ -248,6 +264,7 @@ const PhotoItem = ({ src, onZoomChange }: PhotoItemProps) => {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      style={{ pointerEvents: 'auto' }} // Ensure touch events are captured here
     >
       <div className="w-full h-full flex items-center justify-center">
         <img

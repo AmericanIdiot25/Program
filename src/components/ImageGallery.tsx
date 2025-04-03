@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -34,20 +35,35 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   });
   
   useEffect(() => {
+    // Update carousel options when zoom state changes
     setCarouselOptions(prev => ({
       ...prev,
-      active: !isZoomed
+      active: !isZoomed,
+      draggable: !isZoomed  // Disable dragging when zoomed
     }));
     
     if (!carouselApi) return;
     
     if (isZoomed) {
+      // Disable all carousel interactions when zoomed in
+      carouselApi.off("select");
+      carouselApi.off("scroll");
+      carouselApi.off("settle");
       carouselApi.off("pointerDown");
       carouselApi.off("pointerUp");
       carouselApi.off("pointerMove");
-      carouselApi.off("select");
+      
+      // Prevent the carousel from responding to any input
+      const disableCarouselInteraction = () => {
+        if (carouselApi && carouselApi.clickAllowed) {
+          carouselApi.clickAllowed = () => false;
+        }
+      };
+      
+      disableCarouselInteraction();
       
       if (containerRef.current) {
+        // Create or find overlay to capture and stop gesture propagation
         const existingOverlay = document.getElementById('zoom-overlay');
         if (!existingOverlay) {
           const overlay = document.createElement('div');
@@ -59,20 +75,41 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           overlay.style.bottom = '0';
           overlay.style.zIndex = '5';
           
-          overlay.addEventListener('touchstart', e => e.stopPropagation(), { passive: false });
-          overlay.addEventListener('touchmove', e => e.stopPropagation(), { passive: false });
-          overlay.addEventListener('touchend', e => e.stopPropagation(), { passive: false });
-          overlay.addEventListener('wheel', e => e.stopPropagation(), { passive: false });
+          // Stop all events from propagating to carousel
+          const stopPropagation = (e: Event) => {
+            e.stopPropagation();
+            e.preventDefault();
+          };
+          
+          overlay.addEventListener('touchstart', stopPropagation, { passive: false });
+          overlay.addEventListener('touchmove', stopPropagation, { passive: false });
+          overlay.addEventListener('touchend', stopPropagation, { passive: false });
+          overlay.addEventListener('wheel', stopPropagation, { passive: false });
+          overlay.addEventListener('click', stopPropagation, { passive: false });
+          overlay.addEventListener('mousedown', stopPropagation, { passive: false });
+          overlay.addEventListener('mouseup', stopPropagation, { passive: false });
+          overlay.addEventListener('mousemove', stopPropagation, { passive: false });
           
           containerRef.current.appendChild(overlay);
         }
       }
     } else {
+      // Re-enable carousel interactions when zoomed out
+      carouselApi.on("select");
+      carouselApi.on("scroll");
+      carouselApi.on("settle");
       carouselApi.on("pointerDown");
       carouselApi.on("pointerUp");
       carouselApi.on("pointerMove");
-      carouselApi.on("select");
       
+      // Reset clickAllowed to its default behavior
+      if (carouselApi && carouselApi.clickAllowed) {
+        carouselApi.clickAllowed = (pointerDown: any) => {
+          return !carouselApi.dragHandler.pointerDown;
+        };
+      }
+      
+      // Remove the overlay
       const overlay = document.getElementById('zoom-overlay');
       if (overlay && containerRef.current) {
         containerRef.current.removeChild(overlay);
@@ -170,7 +207,10 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   }
 
   return (
-    <div className="w-full h-full bg-black flex flex-col relative" ref={containerRef}>
+    <div 
+      className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden' : ''}`} 
+      ref={containerRef}
+    >
       <Carousel 
         className="w-full h-full" 
         opts={carouselOptions}
@@ -187,10 +227,15 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       >
         <CarouselContent className="h-full">
           {loadedImages.map((src, index) => (
-            <CarouselItem key={index} className="basis-full h-full">
+            <CarouselItem 
+              key={index} 
+              className="basis-full h-full"
+              style={{ pointerEvents: isZoomed ? 'none' : 'auto' }}
+            >
               <PhotoItem 
                 src={src} 
                 onZoomChange={handleZoomChange}
+                disableCarousel={isZoomed}
               />
             </CarouselItem>
           ))}
