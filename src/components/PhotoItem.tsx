@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 interface PhotoItemProps {
   src: string;
+  onZoomChange?: (isZoomed: boolean) => void;
 }
 
 interface Transform {
@@ -11,7 +12,7 @@ interface Transform {
   translateY: number;
 }
 
-const PhotoItem = ({ src }: PhotoItemProps) => {
+const PhotoItem = ({ src, onZoomChange }: PhotoItemProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [transform, setTransform] = useState<Transform>({ scale: 1, translateX: 0, translateY: 0 });
@@ -28,6 +29,11 @@ const PhotoItem = ({ src }: PhotoItemProps) => {
   useEffect(() => {
     resetTransform();
   }, [src]);
+  
+  // Notify parent component when zoom state changes
+  useEffect(() => {
+    onZoomChange?.(isZoomed);
+  }, [isZoomed, onZoomChange]);
 
   const resetTransform = () => {
     setTransform({ scale: 1, translateX: 0, translateY: 0 });

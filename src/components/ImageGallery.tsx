@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -85,6 +86,10 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     }
   };
 
+  const handleZoomChange = (zoomed: boolean) => {
+    setIsZoomed(zoomed);
+  };
+
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-black text-white">
@@ -109,10 +114,12 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         opts={{
           align: "center",
           loop: true,
-          containScroll: "trimSnaps", // Controls the scrolling behavior
-          dragFree: false, // Disable free dragging
-          skipSnaps: false, // Don't skip any snaps
-          inViewThreshold: 1, // Require full visibility for "in view" status
+          containScroll: "trimSnaps",
+          dragFree: false,
+          skipSnaps: false,
+          inViewThreshold: 1,
+          // Disable dragging when zoomed
+          draggable: !isZoomed
         }}
         setApi={(api) => {
           if (api) {
@@ -129,6 +136,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
             <CarouselItem key={index} className="basis-full h-full">
               <PhotoItem 
                 src={src} 
+                onZoomChange={handleZoomChange}
               />
             </CarouselItem>
           ))}
