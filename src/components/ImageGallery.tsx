@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -118,8 +117,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           dragFree: false,
           skipSnaps: false,
           inViewThreshold: 1,
-          // Use the correct property to disable dragging when zoomed
-          draggable: !isZoomed  // This value will be handled by the correct EmblaOptions type
+          active: !isZoomed
         }}
         setApi={(api) => {
           if (api) {
