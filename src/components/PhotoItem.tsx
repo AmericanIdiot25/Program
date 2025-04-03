@@ -13,8 +13,9 @@ const PhotoItem = ({ src, alt = "Gallery item" }: PhotoItemProps) => {
         <img
           src={src}
           alt={alt}
-          className="photo-item max-w-full object-contain select-none"
+          className="w-full h-auto max-h-none object-contain select-none"
           draggable={false}
+          loading="lazy"
           onDragStart={(e) => e.preventDefault()}
         />
       </div>

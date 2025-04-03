@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 interface ImageGalleryProps {
   totalImages: number;
@@ -97,11 +98,12 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         <ScrollArea className="h-full w-full">
           <div className="flex flex-col items-center pb-20">
             {loadedImages.map((src, index) => (
-              <div key={index} className="w-full p-2 max-w-3xl mx-auto">
+              <div key={index} className="w-full max-w-4xl mx-auto my-2">
                 <img 
                   src={src}
                   alt={`Page ${index + 1}`}
-                  className="w-full object-contain rounded-md"
+                  className="w-full h-auto object-contain rounded-md"
+                  loading="lazy"
                 />
               </div>
             ))}
