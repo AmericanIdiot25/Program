@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -13,9 +14,11 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    const paths = Array.from({ length: totalImages }, (_, i) => {
+    // Create an array to store image paths for each index (1 to totalImages)
+    const imagePathsArray = Array.from({ length: totalImages }, (_, i) => {
       const index = i + 1;
       
+      // For each index, try different path patterns that might work
       return [
         `/lovable-uploads/page${index}.png`,
         `${window.location.pathname}lovable-uploads/page${index}.png`,
@@ -26,7 +29,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       ];
     });
 
-    const allPaths = paths.flat();
+    const allPaths = imagePathsArray.flat();
     
     Promise.allSettled(
       allPaths.map(path => 
@@ -43,6 +46,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         .map(result => (result as PromiseFulfilledResult<string>).value);
       
       if (validPaths.length > 0) {
+        // Find a working path for each image index
         const uniqueImages: string[] = [];
         
         for (let i = 1; i <= totalImages; i++) {
