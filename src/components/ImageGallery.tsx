@@ -120,10 +120,12 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       <Carousel 
         className="w-full h-full" 
         opts={{
-          align: "start",
+          align: "center",
           loop: true,
-          skipSnaps: false,
-          dragFree: true
+          containScroll: "trimSnaps", // Controls the scrolling behavior
+          dragFree: false, // Disable free dragging
+          skipSnaps: false, // Don't skip any snaps
+          inViewThreshold: 1, // Require full visibility for "in view" status
         }}
         setApi={(api) => {
           if (api) {
