@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
   Carousel,
@@ -21,6 +21,21 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    
+    const onSelect = () => {
+      setCurrentIndex(carouselApi.selectedScrollSnap());
+    };
+    
+    carouselApi.on("select", onSelect);
+    onSelect();
+    
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
+  }, [carouselApi]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -55,44 +70,48 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     };
   }, [isFullscreen]);
   
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (isFullscreen) {
       exitFullscreen();
     } else {
       enterFullscreen();
     }
-  };
+  }, [isFullscreen]);
   
-  const enterFullscreen = () => {
+  const enterFullscreen = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     
-    if (container.requestFullscreen) {
-      container.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-    } else if ((container as any).webkitRequestFullscreen) {
-      (container as any).webkitRequestFullscreen();
-    } else if ((container as any).mozRequestFullScreen) {
-      (container as any).mozRequestFullScreen();
+    try {
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+      } else if ((container as any).webkitRequestFullscreen) {
+        (container as any).webkitRequestFullscreen();
+      } else if ((container as any).mozRequestFullScreen) {
+        (container as any).mozRequestFullScreen();
+      }
+    } catch (err) {
+      console.error(`Error attempting to enable fullscreen: ${err}`);
     }
-  };
+  }, []);
   
-  const exitFullscreen = () => {
-    if (document.exitFullscreen) {
-      document.exitFullscreen().catch(err => {
-        console.error(`Error attempting to exit fullscreen: ${err.message}`);
-      });
-    } else if ((document as any).webkitExitFullscreen) {
-      (document as any).webkitExitFullscreen();
-    } else if ((document as any).mozCancelFullScreen) {
-      (document as any).mozCancelFullScreen();
+  const exitFullscreen = useCallback(() => {
+    try {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      }
+    } catch (err) {
+      console.error(`Error attempting to exit fullscreen: ${err}`);
     }
-  };
+  }, []);
   
-  const handleZoomChange = (zoomed: boolean) => {
+  const handleZoomChange = useCallback((zoomed: boolean) => {
     setIsZoomed(zoomed);
-  };
+  }, []);
 
   useEffect(() => {
     const paths = Array.from({ length: totalImages }, (_, i) => {
