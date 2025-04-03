@@ -27,27 +27,19 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
     imageRef
   });
 
+  // Handle initial image setup and window resize
   useEffect(() => {
-    // Create a reference to the current image to avoid stale closures
     const img = imageRef.current;
     
-    // Handle initial setup when src changes
     const handleImageSetup = () => {
       if (img && img.complete) {
         updateDimensions();
       }
     };
     
-    // Reset transform when source changes
-    if (resetTransform) {
-      resetTransform();
-    }
-    
     // Set up image load handler
     if (img) {
       img.onload = handleImageSetup;
-      
-      // If image is already loaded, update dimensions immediately
       if (img.complete) {
         handleImageSetup();
       }
@@ -63,7 +55,14 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
       }
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [src, updateDimensions]); // Intentionally omitting resetTransform to prevent infinite loop
+  }, [src, updateDimensions]);
+  
+  // Separate effect to reset transform when src changes to avoid loops
+  useEffect(() => {
+    if (resetTransform) {
+      resetTransform();
+    }
+  }, [src]); // Only reset when src changes, not when resetTransform changes
 
   return (
     <div 

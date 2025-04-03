@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 export interface Transform {
   scale: number;
@@ -39,12 +39,13 @@ export const useImageGestures = ({
   const lastTapTimeRef = useRef(0);
 
   // Notify parent component when zoom state changes
-  useEffect(() => {
-    onZoomChange?.(isZoomed);
-  }, [isZoomed, onZoomChange]);
+  const updateZoomState = useCallback((zoomed: boolean) => {
+    setIsZoomed(zoomed);
+    onZoomChange?.(zoomed);
+  }, [onZoomChange]);
 
   // Update dimensions when needed
-  const updateDimensions = () => {
+  const updateDimensions = useCallback(() => {
     if (!imageRef.current || !containerRef.current) return;
     
     const img = imageRef.current;
@@ -64,12 +65,12 @@ export const useImageGestures = ({
       height: imgRect.height,
       ratio: img.naturalWidth / img.naturalHeight
     });
-  };
+  }, [containerRef, imageRef]);
 
-  const resetTransform = () => {
+  const resetTransform = useCallback(() => {
     setTransform({ scale: 1, translateX: 0, translateY: 0 });
-    setIsZoomed(false);
-  };
+    updateZoomState(false);
+  }, [updateZoomState]);
 
   // Calculate distance between two touch points
   const getTouchDistance = (touches: React.TouchList): number => {
@@ -140,7 +141,7 @@ export const useImageGestures = ({
           translateX: (rect.width / 2 - x) * targetScale / 2,
           translateY: (rect.height / 2 - y) * targetScale / 2
         });
-        setIsZoomed(true);
+        updateZoomState(true);
       }
       
       // Reset tap time reference
@@ -184,7 +185,7 @@ export const useImageGestures = ({
       
       // Update the zoom state
       if (transform.scale > 1 || initialTouchDistanceRef.current > 0) {
-        setIsZoomed(true);
+        updateZoomState(true);
       }
       
       // Store the center point for reference
@@ -217,11 +218,11 @@ export const useImageGestures = ({
         const newTranslateX = prev.translateX + dx;
         const newTranslateY = prev.translateY + dy;
         
-        return {
+        return constrainTransform({
           scale: prev.scale,
           translateX: newTranslateX,
           translateY: newTranslateY
-        };
+        });
       });
     } 
     else if (e.touches.length === 2) {
@@ -258,13 +259,14 @@ export const useImageGestures = ({
         const newTranslateX = initialTransformRef.current.translateX + dx * (1 - scaleFactor);
         const newTranslateY = initialTransformRef.current.translateY + dy * (1 - scaleFactor);
         
-        setTransform({
+        const newTransform = constrainTransform({
           scale: newScale,
           translateX: newTranslateX,
           translateY: newTranslateY
         });
         
-        setIsZoomed(newScale > 1);
+        setTransform(newTransform);
+        updateZoomState(newScale > 1);
       }
     }
   };
@@ -285,22 +287,14 @@ export const useImageGestures = ({
     } else if (transform.scale < 1.1) {
       // Snap back to scale 1 if very close to it
       resetTransform();
-    }
-    
-    // If zoomed in but near the edges, check if we should bounce back
-    if (transform.scale > 1) {
-      // Apply the constraints after gesture ends to create a bounce-back effect
+    } else {
+      // Apply constraints to ensure image stays within bounds
       setTransform(prev => constrainTransform(prev));
     }
   };
 
-  // Get the constrained transform
-  const getConstrainedTransform = () => {
-    return constrainTransform(transform);
-  };
-
   return {
-    transform: getConstrainedTransform(),
+    transform: constrainTransform(transform),
     isZoomed,
     updateDimensions,
     resetTransform,
