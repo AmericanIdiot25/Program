@@ -37,6 +37,7 @@ export const useImageGestures = ({
   const initialTouchDistanceRef = useRef(0);
   const initialTransformRef = useRef<Transform>({ scale: 1, translateX: 0, translateY: 0 });
   const lastTapTimeRef = useRef(0);
+  const doubleTapToZoomRef = useRef(false);
 
   // Notify parent component when zoom state changes
   const updateZoomState = useCallback((zoomed: boolean) => {
@@ -101,7 +102,7 @@ export const useImageGestures = ({
     
     // If not zoomed in, reset to center
     if (scale <= 1) {
-      return { scale, translateX: 0, translateY: 0 };
+      return { scale: 1, translateX: 0, translateY: 0 };
     }
     
     const maxTranslateX = Math.max(0, (imageDimensions.width * scale - containerDimensions.width) / 2);
@@ -116,16 +117,17 @@ export const useImageGestures = ({
 
   // Handle double tap to zoom in and out
   const handleTap = (e: React.TouchEvent) => {
-    e.preventDefault();
-    
     const currentTime = new Date().getTime();
     const tapLength = currentTime - lastTapTimeRef.current;
     
     // Detect double tap (time between taps less than 300ms)
     if (tapLength < 300 && tapLength > 0) {
+      doubleTapToZoomRef.current = true;
+      
       if (transform.scale > 1) {
         // If already zoomed in, reset with animation
         resetTransform();
+        console.log("Double tap to zoom out detected");
       } else {
         // Zoom in to the point that was double-tapped
         const rect = containerRef.current?.getBoundingClientRect();
@@ -136,10 +138,11 @@ export const useImageGestures = ({
         
         const targetScale = 2.5;
         
+        console.log("Double tap to zoom in detected");
         setTransform({
           scale: targetScale,
-          translateX: (rect.width / 2 - x) * targetScale / 2,
-          translateY: (rect.height / 2 - y) * targetScale / 2
+          translateX: (containerDimensions.width / 2 - x) * (targetScale / 2),
+          translateY: (containerDimensions.height / 2 - y) * (targetScale / 2)
         });
         updateZoomState(true);
       }
@@ -149,6 +152,7 @@ export const useImageGestures = ({
     } else {
       // This is a single tap
       lastTapTimeRef.current = currentTime;
+      doubleTapToZoomRef.current = false;
     }
   };
 
@@ -196,6 +200,11 @@ export const useImageGestures = ({
 
   // Handle touch move
   const handleTouchMove = (e: React.TouchEvent) => {
+    // Don't handle touch move for double taps
+    if (doubleTapToZoomRef.current) {
+      return;
+    }
+
     // Stop propagation when carousel should be disabled
     if (disableCarousel || isZoomed) {
       e.stopPropagation();
@@ -231,9 +240,11 @@ export const useImageGestures = ({
       
       // Calculate new scale based on finger distance
       const currentDistance = getTouchDistance(e.touches);
-      const pinchScale = currentDistance / initialTouchDistanceRef.current;
       
-      if (initialTouchDistanceRef.current > 0 && pinchScale !== 1) {
+      // Only proceed if we have a valid initial distance
+      if (initialTouchDistanceRef.current > 0 && currentDistance > 0) {
+        const pinchScale = currentDistance / initialTouchDistanceRef.current;
+        
         // Get container dimensions
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -273,6 +284,11 @@ export const useImageGestures = ({
 
   // Handle touch end
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Reset double tap flag after touch end
+    setTimeout(() => {
+      doubleTapToZoomRef.current = false;
+    }, 10);
+    
     // Stop propagation when carousel should be disabled
     if (disableCarousel || isZoomed) {
       e.stopPropagation();

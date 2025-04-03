@@ -108,6 +108,13 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
           onDragStart={(e) => e.preventDefault()} // Extra precaution against dragging
         />
       </div>
+      
+      {/* Add double tap instruction indicator */}
+      {isZoomed && (
+        <div className="absolute bottom-4 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-50 py-1">
+          Double tap to zoom out
+        </div>
+      )}
     </div>
   );
 };
