@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -12,6 +13,7 @@ interface ImageGalleryProps {
 }
 
 type AlignType = "start" | "center" | "end";
+type ScrollContainType = "trimSnaps" | "keepSnaps" | "" | true | false;
 
 const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -24,7 +26,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [carouselOptions, setCarouselOptions] = useState({
     align: "center" as AlignType,
     loop: true,
-    containScroll: "trimSnaps",
+    containScroll: "trimSnaps" as ScrollContainType,
     dragFree: false,
     skipSnaps: false,
     inViewThreshold: 1,
