@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 
 export interface Transform {
@@ -38,18 +37,14 @@ export const useImageGestures = ({
   const initialTransformRef = useRef<Transform>({ scale: 1, translateX: 0, translateY: 0 });
   const lastTapTimeRef = useRef(0);
   const doubleTapToZoomRef = useRef(false);
-  const lastPinchScaleRef = useRef(1);
+  const lastPinchCenterRef = useRef({ x: 0, y: 0 });
   const touchMoveCountRef = useRef(0);
   const isTouchActiveRef = useRef(false);
-
-  // For mouse wheel zoom support
-  const wheelTimeoutRef = useRef<number | null>(null);
 
   // Constants
   const MIN_SCALE = 1;
   const MAX_SCALE = 4;
   const DOUBLE_TAP_MAX_DELAY = 250;
-  const ZOOM_DURATION = 300; // ms
 
   // Notify parent component when zoom state changes
   const updateZoomState = useCallback((zoomed: boolean) => {
@@ -225,16 +220,16 @@ export const useImageGestures = ({
       // Store initial touch distance and positions for pinch zoom
       initialTouchDistanceRef.current = getTouchDistance(e.touches);
       initialTransformRef.current = { ...transform };
-      lastPinchScaleRef.current = 1;
+      
+      // Store the touch center for reference
+      const center = getTouchCenter(e.touches);
+      lastTouchRef.current = center;
+      lastPinchCenterRef.current = center;
       
       // Update the zoom state
-      if (transform.scale > 1 || initialTouchDistanceRef.current > 0) {
+      if (transform.scale > 1) {
         updateZoomState(true);
       }
-      
-      // Store the center point for reference
-      const center = getTouchCenter(e.touches);
-      lastTouchRef.current = { x: center.x, y: center.y };
     }
   }, [disableCarousel, isZoomed, transform, containerRef, getTouchDistance, getTouchCenter, updateZoomState, handleDoubleTap]);
 
@@ -282,37 +277,38 @@ export const useImageGestures = ({
     else if (e.touches.length === 2) {
       // Handle pinch zoom
       const currentDistance = getTouchDistance(e.touches);
+      const center = getTouchCenter(e.touches);
       
       // Only proceed if we have a valid initial distance
       if (initialTouchDistanceRef.current > 0 && currentDistance > 0) {
         const pinchScale = currentDistance / initialTouchDistanceRef.current;
         
-        // Get the center point between fingers relative to container
+        // Get the container rect for position calculations
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
         
-        const center = getTouchCenter(e.touches);
-        const touchCenterX = center.x - rect.left;
-        const touchCenterY = center.y - rect.top;
+        // Calculate pinch center point relative to container
+        const pinchCenterX = center.x - rect.left;
+        const pinchCenterY = center.y - rect.top;
         
-        // Calculate new scale relative to initial scale
+        // Calculate new scale based on initial scale
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, initialTransformRef.current.scale * pinchScale));
         
-        // Calculate how much the scale has changed since last update
-        const scaleFactor = newScale / initialTransformRef.current.scale;
+        // Calculate how much we need to translate to maintain the pinch center point
+        const scaleDiff = newScale / initialTransformRef.current.scale;
         
-        // Calculate offset from container center
-        const containerCenterX = containerDimensions.width / 2;
-        const containerCenterY = containerDimensions.height / 2;
+        // Convert touch center to image relative coordinates considering current transform
+        const imageRelativeX = pinchCenterX - containerDimensions.width / 2 - initialTransformRef.current.translateX;
+        const imageRelativeY = pinchCenterY - containerDimensions.height / 2 - initialTransformRef.current.translateY;
         
-        // Apply pinch zoom relative to pinch center
-        const dx = touchCenterX - containerCenterX;
-        const dy = touchCenterY - containerCenterY;
+        // Calculate new translation to keep pinch center fixed
+        const newTranslateX = initialTransformRef.current.translateX + (imageRelativeX * (1 - scaleDiff));
+        const newTranslateY = initialTransformRef.current.translateY + (imageRelativeY * (1 - scaleDiff));
         
-        const newTranslateX = initialTransformRef.current.translateX + dx * (1 - scaleFactor);
-        const newTranslateY = initialTransformRef.current.translateY + dy * (1 - scaleFactor);
+        // Update the last touch center
+        lastPinchCenterRef.current = center;
         
-        // Update transform with constraints
+        // Apply new transform with constraints
         const newTransform = constrainTransform({
           scale: newScale,
           translateX: newTranslateX,
