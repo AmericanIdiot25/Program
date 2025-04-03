@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
@@ -31,21 +30,25 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     dragFree: false,
     skipSnaps: false,
     inViewThreshold: 1,
-    active: !isZoomed
+    active: true // Always start with an active carousel
   });
   
   useEffect(() => {
-    // Update carousel options when zoom state changes
-    setCarouselOptions(prev => ({
-      ...prev,
-      active: !isZoomed,
-      draggable: !isZoomed  // Disable dragging when zoomed
-    }));
-    
+    // Only update carousel options when the zoom state changes
     if (!carouselApi) return;
     
     if (isZoomed) {
-      // Disable all carousel interactions when zoomed in
+      // When zoomed in, disable carousel interactions
+      console.log('Disabling carousel (zoomed in)');
+      
+      // Update carousel options to disable carousel
+      setCarouselOptions(prev => ({
+        ...prev,
+        active: false,
+        draggable: false
+      }));
+      
+      // Disable event handlers to prevent accidental scrolling
       carouselApi.off("select");
       carouselApi.off("scroll");
       carouselApi.off("settle");
@@ -53,17 +56,8 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       carouselApi.off("pointerUp");
       carouselApi.off("pointerMove");
       
-      // Prevent the carousel from responding to any input
-      const disableCarouselInteraction = () => {
-        if (carouselApi && carouselApi.clickAllowed) {
-          carouselApi.clickAllowed = () => false;
-        }
-      };
-      
-      disableCarouselInteraction();
-      
+      // Add the overlay to block events from reaching the carousel
       if (containerRef.current) {
-        // Create or find overlay to capture and stop gesture propagation
         const existingOverlay = document.getElementById('zoom-overlay');
         if (!existingOverlay) {
           const overlay = document.createElement('div');
@@ -75,7 +69,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
           overlay.style.bottom = '0';
           overlay.style.zIndex = '5';
           
-          // Stop all events from propagating to carousel
           const stopPropagation = (e: Event) => {
             e.stopPropagation();
             e.preventDefault();
@@ -94,24 +87,42 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
         }
       }
     } else {
-      // Re-enable carousel interactions when zoomed out
-      carouselApi.on("select");
-      carouselApi.on("scroll");
-      carouselApi.on("settle");
-      carouselApi.on("pointerDown");
-      carouselApi.on("pointerUp");
-      carouselApi.on("pointerMove");
+      // When zoomed out, re-enable carousel interactions
+      console.log('Enabling carousel (zoomed out)');
       
-      // Reset clickAllowed to its default behavior
-      if (carouselApi && carouselApi.clickAllowed) {
-        carouselApi.clickAllowed = (pointerDown: any) => {
-          return !carouselApi.dragHandler.pointerDown;
-        };
+      // Update carousel options to enable carousel
+      setCarouselOptions(prev => ({
+        ...prev,
+        active: true,
+        draggable: true
+      }));
+      
+      // Re-initialize the carousel API
+      if (carouselApi && carouselApi.reInit) {
+        try {
+          carouselApi.reInit();
+        } catch (e) {
+          console.error("Failed to reinitialize carousel:", e);
+        }
+      }
+      
+      // Re-enable all event handlers
+      if (carouselApi) {
+        try {
+          carouselApi.on("select", () => setCurrentIndex(carouselApi.selectedScrollSnap()));
+          carouselApi.on("scroll");
+          carouselApi.on("settle");
+          carouselApi.on("pointerDown");
+          carouselApi.on("pointerUp");
+          carouselApi.on("pointerMove");
+        } catch (e) {
+          console.error("Failed to re-enable carousel events:", e);
+        }
       }
       
       // Remove the overlay
       const overlay = document.getElementById('zoom-overlay');
-      if (overlay && containerRef.current) {
+      if (overlay && containerRef.current && containerRef.current.contains(overlay)) {
         containerRef.current.removeChild(overlay);
       }
     }
@@ -186,6 +197,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   };
 
   const handleZoomChange = (zoomed: boolean) => {
+    console.log('Zoom state changed:', zoomed);
     setIsZoomed(zoomed);
   };
 
