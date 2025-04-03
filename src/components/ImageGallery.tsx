@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
   Carousel,
@@ -19,19 +19,55 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [loadError, setLoadError] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
-  // Disable carousel scrolling when zoomed
+  // More aggressive prevention of carousel scrolling when zoomed
   useEffect(() => {
-    if (carouselApi && isZoomed) {
+    if (!carouselApi) return;
+    
+    if (isZoomed) {
       // When zoomed, completely disable the carousel's ability to handle events
       carouselApi.off("pointerDown");
       carouselApi.off("pointerUp");
       carouselApi.off("pointerMove");
-    } else if (carouselApi && !isZoomed) {
+      
+      // Additional prevention: set a flag to explicitly prevent scroll
+      carouselApi.options.draggable = false;
+      carouselApi.options.active = false;
+      
+      // Add an invisible overlay to catch all touch events when zoomed
+      if (containerRef.current) {
+        const overlay = document.createElement('div');
+        overlay.id = 'zoom-overlay';
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.right = '0';
+        overlay.style.bottom = '0';
+        overlay.style.zIndex = '5';
+        
+        // Prevent touch events from propagating to the carousel
+        overlay.addEventListener('touchstart', e => e.stopPropagation(), { passive: false });
+        overlay.addEventListener('touchmove', e => e.stopPropagation(), { passive: false });
+        overlay.addEventListener('touchend', e => e.stopPropagation(), { passive: false });
+        
+        containerRef.current.appendChild(overlay);
+      }
+    } else {
       // Re-enable events when not zoomed
       carouselApi.on("pointerDown");
       carouselApi.on("pointerUp");
       carouselApi.on("pointerMove");
+      
+      // Reset options
+      carouselApi.options.draggable = true;
+      carouselApi.options.active = true;
+      
+      // Remove overlay if it exists
+      const overlay = document.getElementById('zoom-overlay');
+      if (overlay && containerRef.current) {
+        containerRef.current.removeChild(overlay);
+      }
     }
   }, [carouselApi, isZoomed]);
   
@@ -125,7 +161,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   }
 
   return (
-    <div className="w-full h-full bg-black flex flex-col relative">
+    <div className="w-full h-full bg-black flex flex-col relative" ref={containerRef}>
       <Carousel 
         className="w-full h-full" 
         opts={{
