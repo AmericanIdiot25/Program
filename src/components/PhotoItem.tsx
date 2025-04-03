@@ -28,26 +28,42 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
   });
 
   useEffect(() => {
+    // Create a reference to the current image to avoid stale closures
     const img = imageRef.current;
     
-    // We only want to reset transform when the source changes, not on every render
-    // Adding resetTransform to the dependency array was causing an infinite loop
-    if (img) {
-      resetTransform();
-      
-      if (img.complete) {
+    // Handle initial setup when src changes
+    const handleImageSetup = () => {
+      if (img && img.complete) {
         updateDimensions();
-      } else {
-        img.onload = updateDimensions;
+      }
+    };
+    
+    // Reset transform when source changes
+    if (resetTransform) {
+      resetTransform();
+    }
+    
+    // Set up image load handler
+    if (img) {
+      img.onload = handleImageSetup;
+      
+      // If image is already loaded, update dimensions immediately
+      if (img.complete) {
+        handleImageSetup();
       }
     }
     
     // Update dimensions on window resize
     window.addEventListener('resize', updateDimensions);
+    
+    // Cleanup
     return () => {
+      if (img) {
+        img.onload = null;
+      }
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [src, updateDimensions]); // Removed resetTransform from dependencies
+  }, [src, updateDimensions]); // Intentionally omitting resetTransform to prevent infinite loop
 
   return (
     <div 

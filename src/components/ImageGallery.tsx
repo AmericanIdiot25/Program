@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import PhotoItem from './PhotoItem';
 import { 
   Carousel,
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
-import { Maximize, Minimize } from 'lucide-react';
 
 interface ImageGalleryProps {
   totalImages: number;
@@ -18,9 +18,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!carouselApi) return;
@@ -36,82 +34,10 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       carouselApi.off("select", onSelect);
     };
   }, [carouselApi]);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(
-        Boolean(document.fullscreenElement || 
-        (document as any).webkitFullscreenElement || 
-        (document as any).mozFullScreenElement)
-      );
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-    };
-  }, []);
   
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        exitFullscreen();
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isFullscreen]);
-  
-  const toggleFullscreen = useCallback(() => {
-    if (isFullscreen) {
-      exitFullscreen();
-    } else {
-      enterFullscreen();
-    }
-  }, [isFullscreen]);
-  
-  const enterFullscreen = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    
-    try {
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
-      } else if ((container as any).webkitRequestFullscreen) {
-        (container as any).webkitRequestFullscreen();
-      } else if ((container as any).mozRequestFullScreen) {
-        (container as any).mozRequestFullScreen();
-      }
-    } catch (err) {
-      console.error(`Error attempting to enable fullscreen: ${err}`);
-    }
-  }, []);
-  
-  const exitFullscreen = useCallback(() => {
-    try {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      } else if ((document as any).mozCancelFullScreen) {
-        (document as any).mozCancelFullScreen();
-      }
-    } catch (err) {
-      console.error(`Error attempting to exit fullscreen: ${err}`);
-    }
-  }, []);
-  
-  const handleZoomChange = useCallback((zoomed: boolean) => {
+  const handleZoomChange = (zoomed: boolean) => {
     setIsZoomed(zoomed);
-  }, []);
+  };
 
   useEffect(() => {
     const paths = Array.from({ length: totalImages }, (_, i) => {
@@ -200,18 +126,8 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
 
   return (
     <div 
-      className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden' : ''}`} 
-      ref={containerRef}
+      className={`w-full h-full bg-black flex flex-col relative ${isZoomed ? 'overflow-hidden' : ''}`}
     >
-      <button
-        onClick={toggleFullscreen}
-        className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 z-10"
-        style={{ backdropFilter: 'blur(8px)' }}
-        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-      >
-        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-      </button>
-
       <Carousel 
         className="w-full h-full"
         opts={{
