@@ -16,6 +16,7 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
   const {
     transform,
     isZoomed,
+    isAnimating,
     updateDimensions,
     resetTransform,
     handleTouchStart,
@@ -94,10 +95,11 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
           className="photo-item max-h-full max-w-full object-contain select-none"
           style={{ 
             transform: `scale(${transform.scale}) translate(${transform.translateX / transform.scale}px, ${transform.translateY / transform.scale}px)`,
-            transition: isZoomed ? 'none' : 'transform 0.3s ease-out',
+            transition: isAnimating ? 'transform 0.3s cubic-bezier(0.23, 1, 0.32, 1)' : 'none',
             userSelect: 'none',
             touchAction: 'none',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
+            willChange: 'transform' // Hardware acceleration hint
           }}
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
