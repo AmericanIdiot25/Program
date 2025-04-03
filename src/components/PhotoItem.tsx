@@ -26,28 +26,28 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
     containerRef,
     imageRef
   });
-  
-  // Reset transform when the component unmounts or the image changes
+
   useEffect(() => {
+    const img = imageRef.current;
+    
+    // Reset transform when source changes
     resetTransform();
     
-    // Wait for the image to load to get its natural dimensions
-    if (imageRef.current && imageRef.current.complete) {
-      updateDimensions();
-    } else if (imageRef.current) {
-      imageRef.current.onload = updateDimensions;
+    // Update dimensions when image loads
+    if (img) {
+      if (img.complete) {
+        updateDimensions();
+      } else {
+        img.onload = updateDimensions;
+      }
     }
     
-    // Add resize listener to update bounds when window size changes
-    const handleResize = () => {
-      updateDimensions();
+    // Update dimensions on window resize
+    window.addEventListener('resize', updateDimensions);
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
     };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, [src, resetTransform, updateDimensions]);
-  
-  const transformStyle = `scale(${transform.scale}) translate(${transform.translateX / transform.scale}px, ${transform.translateY / transform.scale}px)`;
 
   return (
     <div 
@@ -56,7 +56,7 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ pointerEvents: 'auto', overflow: 'hidden' }} // Ensure touch events are captured and content is clipped
+      style={{ pointerEvents: 'auto', overflow: 'hidden' }}
     >
       <div className="w-full h-full flex items-center justify-center">
         <img
@@ -65,13 +65,12 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
           alt="Gallery item"
           className="photo-item max-h-full max-w-full object-contain select-none"
           style={{ 
-            transform: transformStyle, 
+            transform: `scale(${transform.scale}) translate(${transform.translateX / transform.scale}px, ${transform.translateY / transform.scale}px)`,
             transition: isZoomed ? 'none' : 'transform 0.3s ease-out',
             userSelect: 'none',
-            WebkitUserDrag: 'none' 
+            WebkitUserDrag: 'none'
           }}
           draggable={false}
-          onLoad={updateDimensions}
         />
       </div>
     </div>
@@ -79,3 +78,4 @@ const PhotoItem = ({ src, onZoomChange, disableCarousel = false }: PhotoItemProp
 };
 
 export default PhotoItem;
+

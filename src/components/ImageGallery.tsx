@@ -12,9 +12,6 @@ interface ImageGalleryProps {
   imagePrefix?: string;
 }
 
-type AlignType = "start" | "center" | "end";
-type ScrollContainType = "trimSnaps" | "keepSnaps" | "";
-
 const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loadedImages, setLoadedImages] = useState<string[]>([]);
@@ -24,17 +21,7 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [carouselApi, setCarouselApi] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  const [carouselOptions, setCarouselOptions] = useState({
-    align: "center" as AlignType,
-    loop: true,
-    containScroll: "trimSnaps" as ScrollContainType,
-    dragFree: false,
-    skipSnaps: false,
-    inViewThreshold: 1,
-    active: true // Always start with an active carousel
-  });
-  
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(
@@ -103,91 +90,10 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     }
   };
   
-  useEffect(() => {
-    if (!carouselApi) return;
-    
-    if (isZoomed) {
-      console.log('Disabling carousel (zoomed in)');
-      
-      setCarouselOptions(prev => ({
-        ...prev,
-        active: false,
-        draggable: false
-      }));
-      
-      carouselApi.off("select");
-      carouselApi.off("scroll");
-      carouselApi.off("settle");
-      carouselApi.off("pointerDown");
-      carouselApi.off("pointerUp");
-      carouselApi.off("pointerMove");
-      
-      if (containerRef.current) {
-        const existingOverlay = document.getElementById('zoom-overlay');
-        if (!existingOverlay) {
-          const overlay = document.createElement('div');
-          overlay.id = 'zoom-overlay';
-          overlay.style.position = 'absolute';
-          overlay.style.top = '0';
-          overlay.style.left = '0';
-          overlay.style.right = '0';
-          overlay.style.bottom = '0';
-          overlay.style.zIndex = '5';
-          
-          const stopPropagation = (e: Event) => {
-            e.stopPropagation();
-            e.preventDefault();
-          };
-          
-          overlay.addEventListener('touchstart', stopPropagation, { passive: false });
-          overlay.addEventListener('touchmove', stopPropagation, { passive: false });
-          overlay.addEventListener('touchend', stopPropagation, { passive: false });
-          overlay.addEventListener('wheel', stopPropagation, { passive: false });
-          overlay.addEventListener('click', stopPropagation, { passive: false });
-          overlay.addEventListener('mousedown', stopPropagation, { passive: false });
-          overlay.addEventListener('mouseup', stopPropagation, { passive: false });
-          overlay.addEventListener('mousemove', stopPropagation, { passive: false });
-          
-          containerRef.current.appendChild(overlay);
-        }
-      }
-    } else {
-      console.log('Enabling carousel (zoomed out)');
-      
-      setCarouselOptions(prev => ({
-        ...prev,
-        active: true,
-        draggable: true
-      }));
-      
-      if (carouselApi && carouselApi.reInit) {
-        try {
-          carouselApi.reInit();
-        } catch (e) {
-          console.error("Failed to reinitialize carousel:", e);
-        }
-      }
-      
-      if (carouselApi) {
-        try {
-          carouselApi.on("select", () => setCurrentIndex(carouselApi.selectedScrollSnap()));
-          carouselApi.on("scroll");
-          carouselApi.on("settle");
-          carouselApi.on("pointerDown");
-          carouselApi.on("pointerUp");
-          carouselApi.on("pointerMove");
-        } catch (e) {
-          console.error("Failed to re-enable carousel events:", e);
-        }
-      }
-      
-      const overlay = document.getElementById('zoom-overlay');
-      if (overlay && containerRef.current && containerRef.current.contains(overlay)) {
-        containerRef.current.removeChild(overlay);
-      }
-    }
-  }, [carouselApi, isZoomed]);
-  
+  const handleZoomChange = (zoomed: boolean) => {
+    setIsZoomed(zoomed);
+  };
+
   useEffect(() => {
     const paths = Array.from({ length: totalImages }, (_, i) => {
       const index = i + 1;
@@ -256,11 +162,6 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
     }
   };
 
-  const handleZoomChange = (zoomed: boolean) => {
-    console.log('Zoom state changed:', zoomed);
-    setIsZoomed(zoomed);
-  };
-
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-black text-white">
@@ -291,27 +192,23 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
       >
         {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
       </button>
-      
+
       <Carousel 
-        className="w-full h-full" 
-        opts={carouselOptions}
-        setApi={(api) => {
-          if (api) {
-            setCarouselApi(api);
-            api.on("select", () => {
-              if (!isZoomed) {
-                setCurrentIndex(api.selectedScrollSnap());
-              }
-            });
-          }
+        className="w-full h-full"
+        opts={{
+          align: "center",
+          loop: true,
+          skipSnaps: false,
+          containScroll: "keepSnaps",
+          dragFree: false
         }}
+        setApi={setCarouselApi}
       >
         <CarouselContent className="h-full">
           {loadedImages.map((src, index) => (
             <CarouselItem 
               key={index} 
               className="basis-full h-full"
-              style={{ pointerEvents: isZoomed ? 'none' : 'auto' }}
             >
               <PhotoItem 
                 src={src} 
@@ -321,22 +218,22 @@ const ImageGallery = ({ totalImages, imagePrefix = 'page' }: ImageGalleryProps) 
             </CarouselItem>
           ))}
         </CarouselContent>
-        
-        {!isZoomed && (
-          <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
-            {loadedImages.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => handleIndicatorClick(index)}
-                className={`w-2 h-2 rounded-full ${
-                  index === currentIndex ? 'bg-white' : 'bg-white/40'
-                } transition-colors duration-200`}
-                aria-label={`Go to image ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
       </Carousel>
+
+      {!isZoomed && (
+        <div className="absolute inset-x-0 bottom-4 flex justify-center items-center space-x-1 z-10">
+          {loadedImages.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => handleIndicatorClick(index)}
+              className={`w-2 h-2 rounded-full ${
+                index === currentIndex ? 'bg-white' : 'bg-white/40'
+              } transition-colors duration-200`}
+              aria-label={`Go to image ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
