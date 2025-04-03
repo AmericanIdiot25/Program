@@ -131,5 +131,32 @@
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
+    background-color: black;
+  }
+  
+  /* Ensure notch area has black background on iOS */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background-color: black;
+    z-index: 9999;
+  }
+}
+
+/* Ensure black background on Android notch area */
+@media screen and (orientation: portrait) {
+  body {
+    background-color: black;
+  }
+  
+  #root {
+    background-color: black;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
   }
 }
